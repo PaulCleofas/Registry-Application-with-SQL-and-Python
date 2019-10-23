@@ -1,6 +1,7 @@
 import sqlite3
 import time
 import hashlib
+import register_birth
 
 connection = None
 cursor = None
@@ -108,6 +109,7 @@ def main():
 
     insert_data()
     enroll_assign_grades()
+    register_birth()
 
     # YOUR PART
     # Use the GPA function to get a sorted list of the student names with their average GPAs.
