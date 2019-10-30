@@ -29,7 +29,8 @@ def agent_menu():
         \t<4>  Process a bill of sale
         \t<5>  Process a payment
         \t<6>  Get a driver abstract
-        \t<7>  Exit Service Canada
+        \t<7>  Log out of your account
+        \t<8>  Exit Service Canada
     ''')
     try: # In case the user just pressed enter without writing anything
         option = int(input("Choose the number of your choice: "))
@@ -42,7 +43,8 @@ def agent_menu():
             4: lambda:"process_bill",
             5: process_payment,
             6: lambda:"driver_abstract",
-            7: sys.exit
+            7: login,
+            8: sys.exit
         }
 
         func = redirect.get(option, lambda:"CHOOSE A VALID NUMBER!")
@@ -51,7 +53,6 @@ def agent_menu():
         print("CHOOSE A VALID NUMBER!")
         agent_menu()
 
-    print("CHOOSE A VALID NUMBER!")
     agent_menu()
 
     return
@@ -62,7 +63,8 @@ def enforcer_menu():
     print('''
         \t<1>  Issue a ticket
         \t<2>  Find a car owner
-        \t<3>  Exit Service Canada
+        \t<3>  Log out your account
+        \t<4>  Exit Service Canada
     ''')
 
     try:
@@ -72,7 +74,8 @@ def enforcer_menu():
         redirect = {
             1: lambda: "Issue ticket",
             2: find_owner,
-            3: sys.exit
+            3: login,
+            4: sys.exit
         }
 
         func = redirect.get(option, lambda:"CHOOSE A VALID NUMBER!")
@@ -81,7 +84,6 @@ def enforcer_menu():
         print("CHOOSE A VALID NUMBER!")
         enforcer_menu()
 
-    print("CHOOSE A VALID NUMBER!")
     enforcer_menu()
 
     return
@@ -239,7 +241,7 @@ def process_payment():
 
     # Get the ticket number from the user
     ticketNum = [input("Please enter a valid ticket number: ")]
-    print("You are recording a payment for ticket number:"+ticketNum[0])
+    print("You are recording a payment for ticket number "+ticketNum[0]+".")
 
     # Verify that the ticket number entered is valid
     if ticketNum in tickets:
@@ -252,29 +254,34 @@ def process_payment():
 
         if (len(paidAmount) > 0): # Check if there was already a previous payment
             pendingAmount = int(fine[0][0]) - int(paidAmount[0][0])
-            print("The pending amount is "+str(pendingAmount))
+            print("The pending amount is $"+str(pendingAmount))
         
         else:
             pendingAmount = int(fine[0][0])
-            print("The pending amount is "+str(pendingAmount))
+            print("The pending amount is $"+str(pendingAmount))
 
-        payingAmount = int(input("Please enter the amount paid today: "))
-        # TO DO: Check if the input is just a newline character 
+
+        # TO DO: Check if the input is just a newline character or a negative number
 
         try:
-            if (payingAmount > pendingAmount):
-                print("The amount paid exceeds the pending amount.")
-            elif (payingAmount < pendingAmount):
-                if (len(paidAmount) > 0):  # Check if there was already a previous payment
-                    totalPaid = payingAmount + int(paidAmount[0][0])
-                else:
-                    totalPaid = payingAmount
-                recordPayment = "INSERT INTO payments(tno, pdate, amount) VALUES ("+ticketNum[0]+","+"'"+todayStr+"'"+","+str(payingAmount)+");"
-                cursor.execute(recordPayment) # Only one payment could be accepted for a ticket in a day
-            print("Payment Recorded!")
-            print("The pending amount is "+str(int(fine[0][0])-totalPaid))
+            payingAmount = int(input("Please enter the amount paid today: $"))
+
+            if (payingAmount > 0):
+                if (payingAmount > pendingAmount):
+                    print("The amount paid exceeds the pending amount.")
+                elif (payingAmount < pendingAmount):
+                    if (len(paidAmount) > 0):  # Check if there was already a previous payment
+                        totalPaid = payingAmount + int(paidAmount[0][0])
+                    else:
+                        totalPaid = payingAmount
+                    recordPayment = "INSERT INTO payments(tno, pdate, amount) VALUES ("+ticketNum[0]+","+"'"+todayStr+"'"+","+str(payingAmount)+");"
+                    cursor.execute(recordPayment) # Only one payment could be accepted for a ticket in a day
+                print("PAYMENT RECORDED!")
+                print("The pending amount is $"+str(int(fine[0][0])-totalPaid))
+            else:
+                print("PAYMENT NOT RECORDED!Amount entered is not valid!")
         except:
-            print("INVALID PAYMENT")
+            print("PAYMENT NOT RECORDED! Either a payment has already been made today for this ticket or the amount entered is not valid.")
 
     else:
         print("You entered an invalid ticket!")
@@ -413,8 +420,10 @@ def find_owner():
             SELECT v.make, v.model, v.year, v.color, r.plate,
                 r.regdate, r.expiry, r.fname||" "||r.lname
             FROM vehicles v, registrations r
-            WHERE '''+whereClause+''' GROUP BY v.vin;
-
+            WHERE '''+whereClause+''' AND r.regdate IN 
+                (SELECT r2.regdate FROM registrations r2
+                    WHERE r2.vin = v.vin
+                    ORDER BY r2.regdate DESC LIMIT 1);
             '''
     try:
         cursor.execute(ownerQuery)
