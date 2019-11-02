@@ -3,6 +3,7 @@ import time
 from random import randint
 from datetime import date
 import sys
+from getpass import getpass
 # from marriage.registerMarriage import registerMarriage
 
 connection = None
@@ -98,7 +99,7 @@ def login():
     if (userId == "exit"):
         sys.exit()
 
-    password = input("Enter your password: ")
+    password = getpass("Enter your password: ")
 
 
     verify_user(userId,password)
@@ -267,7 +268,7 @@ def register_birth():
             break
 
 
-    personsQuery = "SELECT fname, lname FROM persons;"
+    personsQuery = "SELECT lower(fname), lower(lname) FROM persons;"
     cursor.execute(personsQuery)
     persons = [[str(item) for item in results] for results in cursor.fetchall()]
     connection.commit()
@@ -278,9 +279,10 @@ def register_birth():
         print(fname + ", " + lname)
 
         childName = [fname, lname]
+        lowChild = [fname.lower(), lname.lower()]
 
 
-        if (childName in persons):
+        if (lowChild in persons):
             print("Person already exists in database.\n")
             print("BIRTH NOT REGISTERED!")
             use_again("register a birth", register_birth)
@@ -302,7 +304,7 @@ def register_birth():
 
 
         today = date.today()
-        regdate = "'" + today.strftime("%Y-%m-%d") + "'"
+        regdate = today.strftime("%Y-%m-%d")
         print(regdate)
 
         # regplace = "'" + input("Enter Birth Location: ") + "'"
@@ -313,7 +315,7 @@ def register_birth():
         cursor.execute(userQuery)
         city = [[str(item) for item in results] for results in cursor.fetchall()]
         connection.commit()
-        regplace = "'"+city[0][0]+"'"
+        regplace = city[0][0]
         print("Regplace:"+regplace)
 
         print("*********Father's info*********")
@@ -322,7 +324,9 @@ def register_birth():
         f_lname = input("Enter Father's Last Name: ")
         f_name = [f_fname, f_lname]
 
-        if (f_name not in persons):
+        lowFather = [f_fname.lower(), f_lname.lower()]
+
+        if (lowFather not in persons):
             print("Father does not exists in database.")
             print("Registering Father:")
             insert_person()
@@ -335,7 +339,9 @@ def register_birth():
         m_lname = input("Enter Mother's Last Name: ")
         m_name = [m_fname, m_lname]
 
-        if (m_name not in persons):
+        lowMother = [f_fname.lower(), f_lname.lower()]
+
+        if (lowMother not in persons):
             print("Mother does not exists in database.")
             print("Registering Mother:")
             insert_person()
@@ -344,7 +350,7 @@ def register_birth():
             m_lname = "'" + m_lname + "'" 
 
         
-        motherQuery = "SELECT address, phone FROM persons WHERE fname = '"+m_name[0]+"' AND lname = '"+m_name[1]+"';"
+        motherQuery = "SELECT address, phone FROM persons WHERE fname = '"+m_name[0]+"' COLLATE NOCASE AND lname = '"+m_name[1]+"' COLLATE NOCASE;"
         cursor.execute(motherQuery)
         motherInfo = [[str(item) for item in results] for results in cursor.fetchall()]
         connection.commit()
@@ -357,8 +363,8 @@ def register_birth():
             INSERT INTO births VALUES ('''+regno[0]+''', 
             "'''+childName[0]+'''", 
             "'''+childName[1]+'''", 
-            '''+regdate+''', 
-            '''+regplace+''', 
+            "'''+regdate+'''", 
+            "'''+regplace+'''", 
             "'''+gender.upper()+'''", 
             "'''+f_name[0]+'''", 
             "'''+f_name[1]+'''", 
@@ -370,7 +376,7 @@ def register_birth():
 
         print("BIRTH RECORDED!")
 
-    except sqlite3.OperationalError as error:
+    except:
         print(error)
 
         
@@ -381,11 +387,10 @@ def register_birth():
     return   
     
 
-    
-
 
 def register_marriage():
-    global connection, cursor
+    global connection, cursor, userId
+    print("****************Marriage Registration****************")
     regnoQuery = "SELECT regno FROM marriages;"
     cursor.execute(regnoQuery)
     regnums = [[str(item) for item in results] for results in cursor.fetchall()]
@@ -399,7 +404,8 @@ def register_marriage():
     
     personQuery = "SELECT fname, lname FROM persons;"
     cursor.execute(personQuery)
-    persons = [[str(item) for item in results] for results in cursor.fetchall()]
+    lowPersons = [[str(item).lower() for item in results] for results in cursor.fetchall()]
+    persons = [[str(item).lower() for item in results] for results in cursor.fetchall()]
     connection.commit()
 
     try: 
@@ -408,31 +414,51 @@ def register_marriage():
         p1_fname = input("First Name: ")
         p1_lname = input("Last Name: ")
         p1 = [p1_fname, p1_lname]
+        lowP1 = [p1_fname.lower(), p1_lname.lower()]
 
-        if p1 not in persons:
+        if lowP1 not in lowPersons:
             print("PERSON NOT EXISTING! Register below.")
-            p1 = insert_person()
+            insert_person()
+        else:
+            for i in range(len(persons)):
+                if (lowP1[0] == persons[i][0] and lowP1[1]==persons[i][1]):
+                    p1[0] = persons[i][0]
+                    p1[1] = persons[i][1]
+            
 
         print("***Partner 2***")
         p2_fname = input("First Name: ")
         p2_lname = input("Last Name: ")
         p2 = [p2_fname, p2_lname]
+        lowP2 = [p2_fname.lower(), p2_lname.lower()]
 
-
-        if p2 not in persons:
+        if lowP2 not in lowPersons:
             print("PERSON NOT EXISTING! Register below.")
-            p2 = insert_person()
+            insert_person()
+        else:
+            for i in range(len(persons)):
+                if (lowP2[0] == persons[i][0] and lowP2[1]==persons[i][1]):
+                    p2[0] = persons[i][0]
+                    p2[1] = persons[i][1]
 
         today = date.today() # current date and time
         regdate = today.strftime("%Y-%m-%d")  # Converting date to string
 
-        register = "INSERT INTO marriages VALUES ('"+regno[0]+"', '"+regdate+"', 'Manila', '"+p1[0]+"', '"+p1[1]+"', '"+p2[0]+"', '"+p2[1]+"');"
+        # Get the city of the user and set it as the reg place
+        userQuery = "SELECT city FROM users WHERE uid = '"+userId+"';"
+        cursor.execute(userQuery)
+        city = [[str(item) for item in results] for results in cursor.fetchall()]
+        connection.commit()
+        regplace = city[0][0]
+        print("Regplace:"+regplace)
+
+        register = "INSERT INTO marriages VALUES ('"+regno[0]+"', '"+regdate+"', '"+regplace+"', '"+p1[0]+"', '"+p1[1]+"', '"+p2[0]+"', '"+p2[1]+"');"
 
         cursor.execute(register)
         print("MARRIAGE RECORDED!")
         connection.commit()
-    except:
-        print("Invalid!")
+    except sqlite3.OperationalError as error:
+        print(error)
 
     use_again("register a marriage", register_marriage)
 
@@ -494,7 +520,8 @@ def process_bill():
                 FROM registrations r
                 WHERE r.vin = '''+vin+''' AND r.regdate IN 
                     (SELECT r2.regdate FROM registrations r2
-                        ORDER BY r2.regdate DESC LIMIT 1);
+                        GROUP BY r2.vin ORDER BY r2.regdate DESC)
+                ;
                 '''
         cursor.execute(ownerQuery)
         legitOwner = [[str(item) for item in results] for results in  cursor.fetchall()]
@@ -554,7 +581,7 @@ def process_bill():
 
 def get_abstract():
     global connection, cursor
-
+    print("***********GET DRIVER'S ABSTRACT*************")
     dfname = input("Please enter driver's first name: ")
     dlname = input("Please enter driver's last name: ")
 
@@ -563,8 +590,8 @@ def get_abstract():
             AS SELECT r.fname, r.lname, COUNT(t.tno), COUNT(DISTINCT d.ddate), SUM(d.points) 
                 FROM (registrations r LEFT OUTER JOIN tickets t ON (r.regno = t.regno AND (t.vdate >= date('now', '-2 year' )))) 
                 LEFT OUTER JOIN demeritNotices d ON (r.fname=d.fname AND r.lname=d.lname AND (d.ddate >= date('now', '-2 year'))) ''' +'''
-                WHERE r.fname = "'''+dfname+'''" AND r.lname = "'''+dlname+'''"  
-                GROUP BY r.fname, r.lname;
+                WHERE r.fname = "'''+dfname+'''" COLLATE NOCASE AND r.lname = "'''+dlname+'''" COLLATE NOCASE  
+                GROUP BY r.fname, r.lname ;
         '''
 
     # driverQuery = '''
@@ -616,7 +643,7 @@ def get_abstract():
                 print("\tViolation date:"+tickets[i][3])
                 print("\tRegistration number: "+tickets[i][4])
                 print("\tCar make: "+tickets[i][5])
-                print("\tCar model:"+tickets[i][6])
+                print("\tCar model: "+tickets[i][6])
 
                 if((i+1) % 5 == 0):
                     option = input("Enter 'm' to see more, 's' to search again, or any character to go back to the main menu: ")
@@ -885,7 +912,7 @@ def find_owner():
     make = yes_or_no("make", knowMake)
 
     if (make != "none"): # Check if the user knows the make
-        whereClause += " AND v.make = '"+make+"'"
+        whereClause += " AND v.make = '"+make+"' COLLATE NOCASE"
 
     # Get the car model
     print("\n****************************")
@@ -894,7 +921,7 @@ def find_owner():
     model = yes_or_no("model", knowModel)
 
     if (model != "none"): # Check if the user knows the model
-        whereClause += " AND v.model = '"+model+"'"
+        whereClause += " AND v.model = '"+model+"' COLLATE NOCASE"
 
     # Get the car year
     print("\n****************************")
@@ -912,7 +939,7 @@ def find_owner():
     color = yes_or_no("color", knowColor)
 
     if (color != "none"): # Check if the user knows the color of the car
-        whereClause += " AND v.color = '"+color+"'"
+        whereClause += " AND v.color = '"+color+"' COLLATE NOCASE"
 
     # Get the car plate number
     print("\n****************************")
@@ -921,7 +948,7 @@ def find_owner():
     plate = yes_or_no("plate", knowPlate)
 
     if (plate != "none"): # Check if the user knows the color of the car
-        whereClause += " AND r.plate = '"+ plate+"'"
+        whereClause += " AND r.plate = '"+ plate+"' COLLATE NOCASE"
 
     # print(whereClause)
 
