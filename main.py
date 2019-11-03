@@ -49,13 +49,13 @@ def agent_menu():
             8: sys.exit
         }
 
-        func = redirect.get(option, lambda:"CHOOSE A VALID NUMBER!")
-        print(func())
+        func = redirect.get(option, lambda:print("CHOOSE A VALID NUMBER!"))
+        func()
     except ValueError:
         print("CHOOSE A VALID NUMBER!")
         agent_menu()
 
-    agent_menu()
+    sys.exit()
 
     return
 
@@ -80,13 +80,13 @@ def enforcer_menu():
             4: sys.exit
         }
 
-        func = redirect.get(option, lambda:"CHOOSE A VALID NUMBER!")
-        print(func())
+        func = redirect.get(option, lambda:print("CHOOSE A VALID NUMBER!"))
+        func()
     except ValueError:
         print("CHOOSE A VALID NUMBER!")
         enforcer_menu()
 
-    enforcer_menu()
+    sys.exit()
 
     return
 
@@ -268,10 +268,14 @@ def register_birth():
             break
 
 
-    personsQuery = "SELECT lower(fname), lower(lname) FROM persons;"
+    personsQuery = "SELECT fname, lname FROM persons;"
     cursor.execute(personsQuery)
     persons = [[str(item) for item in results] for results in cursor.fetchall()]
+    lowPersons = [[str(item).lower() for item in results] for results in persons]
     connection.commit()
+
+    print(persons)
+    print(lowPersons)
 
     try:
         fname = input("First Name: ")
@@ -282,14 +286,16 @@ def register_birth():
         lowChild = [fname.lower(), lname.lower()]
 
 
-        if (lowChild in persons):
+        if (lowChild in lowPersons):
             print("Person already exists in database.\n")
             print("BIRTH NOT REGISTERED!")
             use_again("register a birth", register_birth)
             
         else:
-            fname = "'" + fname + "'"
-            lname = "'" + lname + "'"
+            for i in range(len(persons)):
+                if (lowChild[0] == lowPersons[i][0] and lowChild[1] == lowPersons[i][1]):
+                    childName[0] = persons[i][0]
+                    childName[1] = persons[i][1]
 
 
         gender = input("Enter gender (M/F): ")
@@ -326,63 +332,73 @@ def register_birth():
 
         lowFather = [f_fname.lower(), f_lname.lower()]
 
-        if (lowFather not in persons):
+        if (lowFather not in lowPersons):
             print("Father does not exists in database.")
             print("Registering Father:")
             insert_person()
         else:
-            f_fname = "'" + f_fname + "'"
-            f_lname = "'" + f_lname + "'"
+            for i in range(len(persons)):
+                if (lowFather[0] == lowPersons[i][0] and lowFather[1] == lowPersons[i][1]):
+                    f_name[0] = persons[i][0]
+                    f_name[1] = persons[i][1]
 
         print("*********Mother's info**********")
         m_fname = input("Enter Mother's First Name: ")
         m_lname = input("Enter Mother's Last Name: ")
         m_name = [m_fname, m_lname]
 
-        lowMother = [f_fname.lower(), f_lname.lower()]
+        lowMother = [m_fname.lower(), m_lname.lower()]
 
-        if (lowMother not in persons):
+        if (lowMother not in lowPersons):
             print("Mother does not exists in database.")
             print("Registering Mother:")
             insert_person()
         else:
-            m_fname = "'" + m_fname + "'"
-            m_lname = "'" + m_lname + "'" 
+            for i in range(len(persons)):
+                if (lowMother[0] == lowPersons[i][0] and lowMother[1] == lowPersons[i][1]):
+                    m_name[0] = persons[i][0]
+                    m_name[1] = persons[i][1]
 
-        
-        motherQuery = "SELECT address, phone FROM persons WHERE fname = '"+m_name[0]+"' COLLATE NOCASE AND lname = '"+m_name[1]+"' COLLATE NOCASE;"
-        cursor.execute(motherQuery)
-        motherInfo = [[str(item) for item in results] for results in cursor.fetchall()]
-        connection.commit()
+        # Check if mother and father are the same person  
+        if (m_name != f_name):
+            motherQuery = "SELECT address, phone FROM persons WHERE fname = '"+m_name[0]+"' COLLATE NOCASE AND lname = '"+m_name[1]+"' COLLATE NOCASE;"
+            cursor.execute(motherQuery)
+            motherInfo = [[str(item) for item in results] for results in cursor.fetchall()]
 
-        childQuery = "INSERT INTO persons VALUES ('"+childName[0]+"', '"+childName[1]+"', "+bdate+", "+bplace+", '"+motherInfo[0][0]+"', '"+motherInfo[0][1]+"');"
-        cursor.execute(childQuery)
-        connection.commit()
 
-        birthQuery = '''
-            INSERT INTO births VALUES ('''+regno[0]+''', 
-            "'''+childName[0]+'''", 
-            "'''+childName[1]+'''", 
-            "'''+regdate+'''", 
-            "'''+regplace+'''", 
-            "'''+gender.upper()+'''", 
-            "'''+f_name[0]+'''", 
-            "'''+f_name[1]+'''", 
-            "'''+m_name[0]+'''", 
-            "'''+m_name[1]+'''");
-            '''
-        cursor.execute(birthQuery)
-        connection.commit()
+            childQuery = "INSERT INTO persons VALUES ('"+childName[0]+"', '"+childName[1]+"', "+bdate+", "+bplace+", '"+motherInfo[0][0]+"', '"+motherInfo[0][1]+"');"
+            cursor.execute(childQuery)
+
+
+            birthQuery = '''
+                INSERT INTO births VALUES ('''+regno[0]+''', 
+                "'''+childName[0]+'''", 
+                "'''+childName[1]+'''", 
+                "'''+regdate+'''", 
+                "'''+regplace+'''", 
+                "'''+gender.upper()+'''", 
+                "'''+f_name[0]+'''", 
+                "'''+f_name[1]+'''", 
+                "'''+m_name[0]+'''", 
+                "'''+m_name[1]+'''");
+                '''
+            
+            print(birthQuery)
+            cursor.execute(birthQuery)
+            connection.commit()
 
         print("BIRTH RECORDED!")
 
-    except:
+        else:
+            print("Mother and father cannot be the same person!")
+            print("BIRTH NOT RECORDED!")
+
+    except sqlite3.OperationalError as error:
         print(error)
 
         
     use_again("Register a Birth", register_birth)
 
-    connection.commit()
 
     return   
     
@@ -404,8 +420,8 @@ def register_marriage():
     
     personQuery = "SELECT fname, lname FROM persons;"
     cursor.execute(personQuery)
-    lowPersons = [[str(item).lower() for item in results] for results in cursor.fetchall()]
-    persons = [[str(item).lower() for item in results] for results in cursor.fetchall()]
+    persons = [[str(item) for item in results] for results in cursor.fetchall()]
+    lowPersons = [[str(item).lower() for item in results] for results in persons]
     connection.commit()
 
     try: 
@@ -416,12 +432,15 @@ def register_marriage():
         p1 = [p1_fname, p1_lname]
         lowP1 = [p1_fname.lower(), p1_lname.lower()]
 
+        print(lowPersons)
+        print(persons)
+
         if lowP1 not in lowPersons:
             print("PERSON NOT EXISTING! Register below.")
             insert_person()
         else:
             for i in range(len(persons)):
-                if (lowP1[0] == persons[i][0] and lowP1[1]==persons[i][1]):
+                if (lowP1[0] == lowPersons[i][0] and lowP1[1]==lowPersons[i][1]):
                     p1[0] = persons[i][0]
                     p1[1] = persons[i][1]
             
@@ -437,26 +456,39 @@ def register_marriage():
             insert_person()
         else:
             for i in range(len(persons)):
-                if (lowP2[0] == persons[i][0] and lowP2[1]==persons[i][1]):
+                if (lowP2[0] == lowPersons[i][0] and lowP2[1]==lowPersons[i][1]):
                     p2[0] = persons[i][0]
                     p2[1] = persons[i][1]
 
-        today = date.today() # current date and time
-        regdate = today.strftime("%Y-%m-%d")  # Converting date to string
+        # Check if husband and wife are the same person
+        if (p1 != p2):
 
-        # Get the city of the user and set it as the reg place
-        userQuery = "SELECT city FROM users WHERE uid = '"+userId+"';"
-        cursor.execute(userQuery)
-        city = [[str(item) for item in results] for results in cursor.fetchall()]
-        connection.commit()
-        regplace = city[0][0]
-        print("Regplace:"+regplace)
+            today = date.today() # current date and time
+            regdate = today.strftime("%Y-%m-%d")  # Converting date to string
 
-        register = "INSERT INTO marriages VALUES ('"+regno[0]+"', '"+regdate+"', '"+regplace+"', '"+p1[0]+"', '"+p1[1]+"', '"+p2[0]+"', '"+p2[1]+"');"
+            # Get the city of the user and set it as the reg place
+            userQuery = "SELECT city FROM users WHERE uid = '"+userId+"';"
+            cursor.execute(userQuery)
+            city = [[str(item) for item in results] for results in cursor.fetchall()]
+            connection.commit()
+            regplace = city[0][0]
+            print("Regplace:"+regplace)
+            print("regno:"+regno[0])
+            print("regdate: "+regdate)
+            print("p1[0]: "+ p1[0])
+            print("p1[1]: "+ p1[1])
+            print("p2[0]: "+ p2[0])
+            print("p2[1]: "+ p2[1])
 
-        cursor.execute(register)
-        print("MARRIAGE RECORDED!")
-        connection.commit()
+            register = "INSERT INTO marriages VALUES ('"+regno[0]+"', '"+regdate+"', '"+regplace+"', '"+p1[0]+"', '"+p1[1]+"', '"+p2[0]+"', '"+p2[1]+"');"
+
+            cursor.execute(register)
+            print("MARRIAGE RECORDED!")
+            connection.commit()
+        else:
+            print("Mother and father cannot be the same person!")
+            print("BIRTH NOT RECORDED!")
+
     except sqlite3.OperationalError as error:
         print(error)
 
