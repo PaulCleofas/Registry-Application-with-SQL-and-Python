@@ -1,9 +1,9 @@
 import sqlite3
-import time
 from random import randint
 from datetime import date
 import sys
 from getpass import getpass
+
 # from marriage.registerMarriage import registerMarriage
 
 connection = None
@@ -55,7 +55,7 @@ def agent_menu():
         print("CHOOSE A VALID NUMBER!")
         agent_menu()
 
-    sys.exit()
+    agent_menu
 
     return
 
@@ -86,18 +86,19 @@ def enforcer_menu():
         print("CHOOSE A VALID NUMBER!")
         enforcer_menu()
 
-    sys.exit()
+    enforcer_menu()
 
     return
 
 
 def login():
     global userId
-    print("*************************ServiceCanada********************************")
+    print("*************************ServiceCanada***********************************")
     userId = input("Enter your user id: ")
 
     if (userId == "exit"):
         sys.exit()
+    #TODO string matching for user name
 
     password = getpass("Enter your password: ")
 
@@ -281,6 +282,7 @@ def register_birth():
         fname = input("First Name: ")
         lname = input("Last Name: ")
         print(fname + ", " + lname)
+        #TODO: CHECK IF NULL
 
         childName = [fname, lname]
         lowChild = [fname.lower(), lname.lower()]
@@ -387,7 +389,7 @@ def register_birth():
             cursor.execute(birthQuery)
             connection.commit()
 
-        print("BIRTH RECORDED!")
+            print("BIRTH RECORDED!")
 
         else:
             print("Mother and father cannot be the same person!")
@@ -619,7 +621,7 @@ def get_abstract():
 
     driverQuery = '''
             CREATE VIEW drivers(fname, lname, num_tickets, num_demeritnote, num_demeritpts)
-            AS SELECT r.fname, r.lname, COUNT(t.tno), COUNT(DISTINCT d.ddate), SUM(d.points) 
+            AS SELECT r.fname, r.lname, COUNT(DISTINCT t.tno), COUNT(DISTINCT d.ddate), SUM(d.points) 
                 FROM (registrations r LEFT OUTER JOIN tickets t ON (r.regno = t.regno AND (t.vdate >= date('now', '-2 year' )))) 
                 LEFT OUTER JOIN demeritNotices d ON (r.fname=d.fname AND r.lname=d.lname AND (d.ddate >= date('now', '-2 year'))) ''' +'''
                 WHERE r.fname = "'''+dfname+'''" COLLATE NOCASE AND r.lname = "'''+dlname+'''" COLLATE NOCASE  
@@ -655,12 +657,13 @@ def get_abstract():
 
         option = input("Enter 't' to see the list of tickets, 's' to search again, or any character to go back to the main menu: ")
 
-        if (option == 't'):
+        if (option.lower() == 't'):
             ticketQuery = '''
                     SELECT t.tno, t.fine, t.violation, t.vdate, t.regno, v.make, v.model 
                     FROM tickets t, registrations r, vehicles v 
                     WHERE t.regno = r.regno AND  r.vin = v.vin
-                        AND t.vdate >= date('now', '-2 year') AND r.fname||r.lname ="'''+abstract[0][0]+abstract[0][1]+'''";
+                        AND t.vdate >= date('now', '-2 year') AND r.fname||r.lname ="'''+abstract[0][0]+abstract[0][1]+'''"
+                    ORDER BY t.vdate DESC;
                     '''
             cursor.execute(ticketQuery)
             tickets = [[str(item) for item in results] for results in cursor.fetchall()]
@@ -680,16 +683,16 @@ def get_abstract():
                 if((i+1) % 5 == 0):
                     option = input("Enter 'm' to see more, 's' to search again, or any character to go back to the main menu: ")
 
-                    if (option == 'm'):
+                    if (option.lower() == 'm'):
                         continue
-                    elif (option == 's'):
+                    elif (option.lower() == 's'):
                         get_abstract()
                     else:
-                        if (usertype == 'a'):
+                        if (usertype.lower() == 'a'):
                             agent_menu()
-                        elif (usertype == 'o'):
+                        elif (usertype.lower() == 'o'):
                             enforcer_menu()
-        elif (option == 's'):
+        elif (option.lower() == 's'):
             get_abstract()
         else:
             if (usertype == 'a'):
@@ -900,7 +903,7 @@ def issue_ticket():
         # Get violation date
         vdate = input("Enter violation date (YYYY-MM-DD): ")
 
-        # Set violation date to today's date
+        # Set violation date to today's date uf nothing's entered
         if (vdate == ''):
             today = date.today() # current date and time
             vdate = today.strftime("%Y-%m-%d")  # Converting date to string
