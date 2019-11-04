@@ -4,7 +4,6 @@ from datetime import date
 import sys
 from getpass import getpass
 
-# from marriage.registerMarriage import registerMarriage
 
 connection = None
 cursor = None
@@ -13,6 +12,16 @@ userId = None
 
 
 def connect(path):
+    """
+        Description:
+            * A registry agent function used to record a new birth 
+                registration into the database
+        Arguments:
+            None
+        
+        Returns:
+            None
+    """
     global connection, cursor
 
     connection = sqlite3.connect(path)
@@ -21,8 +30,20 @@ def connect(path):
     connection.commit()
     return
 
+
 def agent_menu():
-    print("\n*************************************************************")
+    """
+        Description:
+            * This function acts as a main menu of the command line interface
+                which lets a registry agent user choose a transaction to accomplish
+                and redirects the user to the interface of the chosen transaction
+        Arguments:
+            None
+        
+        Returns:
+            None
+    """
+    print("\n*******************REGISTRY AGENT************************")
     print("You are at the MAIN MENU.")
     print('''
         \t<1>  Register a birth
@@ -55,11 +76,23 @@ def agent_menu():
         print("CHOOSE A VALID NUMBER!")
         agent_menu()
 
-    agent_menu
+    agent_menu()
 
     return
 
+
 def enforcer_menu():
+    """
+        Description:
+            * This function acts as a main menu of the command line interface
+                which lets a traffic officer user choose a transaction to accomplish
+                and redirects the user to the interface of the chosen transaction.
+        Arguments:
+            None
+        
+        Returns:
+            None
+    """
     print("\n*************************************************************")
     print("You are at the MAIN MENU.")
     print('''
@@ -92,37 +125,59 @@ def enforcer_menu():
 
 
 def login():
-    global userId
+    """
+        Description:
+            * This function prompts the user to enter his/her credentials (userid and password)
+            before giving access to the application. The credentials will then be compared against
+            the database records to check if the entered information is valid.
+        Arguments:
+            None
+        Returns:
+            None
+    """
+    global connection, cursor, userId
     print("*************************ServiceCanada***********************************")
+    # Prompt user to enter user id and password
     userId = input("Enter your user id: ")
 
     if (userId == "exit"):
         sys.exit()
-    #TODO string matching for user name
 
     password = getpass("Enter your password: ")
 
 
     verify_user(userId,password)
     
-    return 0
+    return
 
     
 def verify_user(id, pwd):
+    """
+        Description:
+            * This function verifies whether the entered account information of the user
+                matches the records in the database. If it does, the user will be allowed to proceed
+                the main menu; otherwise, the user will be asked again for his/her username and password
+        Arguments:
+            * id (str): this contains the user id entered by the user
+            * pwd (str): this contains the password entered by the user
+        Returns:
+            None
+    """
     global connection, cursor, usertype
     # Verify the user
-    userQuery = "SELECT * FROM users WHERE uid = "+"'"+id+"'"+" AND pwd = '"+pwd+"';"
+    userQuery = "SELECT * FROM users WHERE uid = "+"'"+id+"' COLLATE NOCASE"+" AND pwd = '"+pwd+"';"
 
     try:
         cursor.execute(userQuery)
         info = [[str(item) for item in results] for results in cursor.fetchall()]
         
 
-        if (len(info) == 0):
+        if (len(info) == 0): # If the user entered nothing
             print("\nINVALID USER ID OR PASSWORD!")
-            print("Type 'exit' as the user id to close the program.")
+            print("Type 'exit' as the user id to close the program.") 
             login()
         elif (len(info) == 1):
+            # Otherwise, check the type of the user and redirect the user to the appropriate menu
             if (info[0][2] == 'a'):
                 usertype = 'a'
                 print("\nWelcome back, "+info[0][3]+" "+info[0][4]+"!")
@@ -141,9 +196,14 @@ def verify_user(id, pwd):
     return
 
 
-# Function that gives user options whether to be redirected to the recently used function
-# or go back to the main menu
 def use_again(funcKeyword, function):
+    """
+        Description:
+            * This function asks the user id they want to start another transaction
+                with the same type as the previously finished/terminated transaction
+        Arguments:
+            *
+    """
     decision = input("Do you want to "+funcKeyword+" again?(y/n) ")
 
     try:
@@ -165,6 +225,10 @@ def use_again(funcKeyword, function):
 
 
 def val_input(prompt, isRequired):
+    """
+        Description: 
+            * Function used for inserting a person and verifying that all required fields are acquired
+    """
 
     attrb = input(prompt)
     if (attrb == '' and isRequired == False):
@@ -199,6 +263,13 @@ def val_input(prompt, isRequired):
 
         
 def insert_person():
+    """
+        Description:
+        * This function prompts the user to input information for a person
+           that does not exist in the current database
+        * it will use an SQL query command and create the new person
+    """
+
     global connection, cursor
 
     # isRequired = False
@@ -225,37 +296,19 @@ def insert_person():
     return [fname, lname]
 
 
-# def register_birth():
-#     global connection, cursor
-
-#     regnoQuery = "SELECT regno FROM births;"
-#     cursor.execute(regnoQuery)
-#     regnums = [[str(item) for item in results] for results in cursor.fetchall()]
-#     connection.commit()
- 
-#     # Check if regno already exists
-#     while True:
-#         regno = [str(randint(100,9999))]
-#         if regno not in regnums:
-#             break
-    
-#     personQuery = "SELECT fname, lname FROM persons;"
-#     cursor.execute(personQuery)
-#     persons = [[str(item) for item in results] for results in cursor.fetchall()]
-#     connection.commit()
-
-#     print("**************BIRTH REGISTRATION****************")
-
-#     print("*****Child's information*******")
-#     fname = input("Enter first name: ")
-#     lname = input("Enter last name: ")
-#     gender = input("Enter gender:(M/F) ")
-#     bdate = input("Enter birthdate: ")
-#     bplace = input("Enter birth place: ")
-
-#     print("****Mother's information*****")
-
 def register_birth():
+    """
+        Description:
+            * This function creates a new birth registrations. If the user inputted fname and lname
+              already exist, than the function will return an "Already exists prompt" and will ask
+              the user if they want to try again. If not, it will continue with the process.
+            * This function will also insert a new persons if the father or mother do not exist in the
+              database. It will call insert_person() and continue
+        
+        Returns:
+            * none
+    """
+    print("*************REGISTER A BIRTH**************")
     global connection, cursor
     regnoQuery = "SELECT regno FROM births;"
     cursor.execute(regnoQuery)
@@ -275,14 +328,11 @@ def register_birth():
     lowPersons = [[str(item).lower() for item in results] for results in persons]
     connection.commit()
 
-    print(persons)
-    print(lowPersons)
-
     try:
+        # Ask child's name
         fname = input("First Name: ")
         lname = input("Last Name: ")
         print(fname + ", " + lname)
-        #TODO: CHECK IF NULL
 
         childName = [fname, lname]
         lowChild = [fname.lower(), lname.lower()]
@@ -324,7 +374,6 @@ def register_birth():
         city = [[str(item) for item in results] for results in cursor.fetchall()]
         connection.commit()
         regplace = city[0][0]
-        print("Regplace:"+regplace)
 
         print("*********Father's info*********")
 
@@ -385,7 +434,6 @@ def register_birth():
                 "'''+m_name[1]+'''");
                 '''
             
-            print(birthQuery)
             cursor.execute(birthQuery)
             connection.commit()
 
@@ -399,7 +447,7 @@ def register_birth():
         print(error)
 
         
-    use_again("Register a Birth", register_birth)
+    use_again("register a birth", register_birth)
 
 
     return   
@@ -407,6 +455,17 @@ def register_birth():
 
 
 def register_marriage():
+    """
+        Description:
+            * This function is for creating a new registration for a marriage. It will prompt
+              the user to enter two persons who want to have their registered and insert their marriage
+              into the marriage records.
+
+        Arguments:
+            None
+        Returns:
+            None
+    """
     global connection, cursor, userId
     print("****************Marriage Registration****************")
     regnoQuery = "SELECT regno FROM marriages;"
@@ -500,7 +559,17 @@ def register_marriage():
 
 
 def renew_reg():
+    """
+        Description:
+            * This function is used to renew an existing vehicle registration's expiry date one year after
+                today.
+        Arguments:
+            None
+        Returns:
+            None
+    """
     global connection, cursor
+    print("*************RENEW VEHICLE REGISTRATION*************")
     regno = [input("Enter the registration number: ")]
     cursor.execute("SELECT regno FROM registrations;")
     print(regno)
@@ -544,9 +613,20 @@ def renew_reg():
     return
 
 def process_bill():
+    """
+        Description:
+            * This function is used to transfer ownership of the vehicle from current
+                owner to the new owner given that the user inputs the correct owner and vin
+
+        Arguments:
+            None
+        Returns:
+            None
+    """
+
     global connection, cursor
     print("****************PROCESS A BILL OF SALE********************")
-    vin = input("Enter the Vehicle's vin: ")
+    vin = input("Enter the vehicle's vin: ")
 
     try:
         ownerQuery = '''
@@ -614,6 +694,17 @@ def process_bill():
 
 
 def get_abstract():
+    """
+        Description:
+            * This function shows user the information about a driver they are looking for,
+                showing the name, number of tickets, number of demerit notices, and number of demerit points.
+            * This will also give user an option to see all tickets under the driver's name
+
+        Arguments:
+            None
+        Returns:
+            None
+    """
     global connection, cursor
     print("***********GET DRIVER'S ABSTRACT*************")
     dfname = input("Please enter driver's first name: ")
@@ -628,16 +719,6 @@ def get_abstract():
                 GROUP BY r.fname, r.lname ;
         '''
 
-    # driverQuery = '''
-    # CREATE VIEW drivers(fname, lname, num_tickets, num_demeritnote, num_demeritpts)
-    # AS SELECT r.fname, r.lname, COUNT(t.tno), COUNT(d.points), SUM(d.points)
-    #     FROM (registrations r LEFT OUTER JOIN tickets t ON (r.regno = t.regno AND (t.vdate >= date('now', '-2 year' ) OR t.vdate = NULL)))
-    #             LEFT OUTER JOIN demeritNotices d ON (r.=fnamed.fname AND r.lname=d.lname AND (d.ddate >= date('now', '-2 year' ) OR d.ddate = NULL))
-    #     GROUP BY r.fname, r.lname;
-    # '''
-
-    # SELECT p.fname, p.lname, COUNT(t.tno), COUNT(DISTINCT d.ddate), SUM(d.points) FROM persons p, (registrations r LEFT OUTER JOIN tickets t ON (r.fname = p.fname AND r.fname = p.lname AND r.regno = t.regno AND (t.vdate >= date('now', '-2 year' )))) LEFT OUTER JOIN demeritNotices d ON (r.fname=d.fname AND r.lname=d.lname AND (d.ddate >= date('now', '-2 year'))) GROUP BY p.fname, p.lname;
-    # SELECT p.fname, p.lname, COUNT(t.tno), COUNT(DISTINCT d.ddate), SUM(d.points) FROM persons p1, (registrations r LEFT OUTER JOIN tickets t ON (r.regno = t.regno AND (t.vdate >= date('now', '-2 year' )))) q, (demeritNotices d LEFT JOIN persons p ON (p.fname=d.fname AND p.lname=d.lname AND (d.ddate >= date('now', '-2 year')))) s WHERE GROUP BY p.fname, p.lname;
 
     try:
         cursor.execute("DROP VIEW IF EXISTS drivers;")
@@ -670,6 +751,7 @@ def get_abstract():
             connection.commit()
             numTickets = len(tickets)
             
+            # Show 5 tickets at a time
             for i in range(numTickets):
                 print("*********************************")
                 print("Ticket number: "+tickets[i][0])
@@ -710,6 +792,16 @@ def get_abstract():
 
 
 def process_payment():
+    """
+        Description:
+            * This function enables user to accept payments for a specified ticket.
+            * Payments can be made in multiple installments but only one payment a day per ticket
+
+        Arguments:
+            None
+        Returns:
+            None
+    """
     global connection, cursor
 
     print("***********TICKET PAYMENT****************")
@@ -776,84 +868,19 @@ def process_payment():
     return
 
 
-
-
-
-# Checks if the value is either yes or no, otherwise it will ask the user the second time
-# and go back to the main menu the third time
-# This function is made for the function find_owner
-def yes_or_no(keyword, doesKnow):
-    value = ""
-    if (doesKnow.lower() == 'y'):
-        value = input("Please ENTER the car "+keyword+": ")
-    elif (doesKnow.lower() == 'n'):
-        value = "none"
-    else:
-        print("INVALID ENTRY!")
-        option = input("Try again?(y/n) ")
-        if (option.lower() == 'y'):
-            print("\n****************************")
-            doesKnow = input("Do you KNOW the car "+keyword+"?(y/n) ")
-            value = yes_or_no(keyword, doesKnow)
-        elif (option.lower() == 'n'):
-            print("You are being redirected to the MAIN MENU.")
-            if (usertype == 'a'):
-                agent_menu()
-            elif (usertype == 'o'):
-                enforcer_menu()
-        else:
-            print("INVALID ENTRY!")
-            print("You are being redirected to the MAIN MENU.")
-            if (usertype == 'a'):
-                agent_menu()
-            elif (usertype == 'o'):
-                enforcer_menu()
-    return value
-
-
-
-# For find_owner
-def show_results(matched):
-    for i in range(len(matched)):
-        print("<"+str(i+1)+">")
-        print("\tMake: "+matched[i][0])
-        print("\tModel: "+matched[i][1])
-        print("\tYear: "+matched[i][2])
-        print("\tColor: "+matched[i][3])
-        print("\tPlate Number: "+matched[i][4])
-
-        if (len(matched) < 4):
-            print("\tLatest registration date: "+matched[i][5])
-            print("\tExpiry date: "+matched[i][6])
-            print("\tOwner: "+matched[i][7])
-
-    if (len(matched) >= 4):
-        num = int(input("Enter the result number to see more details or press any key to start a new search: "))
-        print("<"+str(num)+">")
-        print("\tMake: "+matched[num][0])
-        print("\tModel: "+matched[num][1])
-        print("\tYear: "+matched[num][2])
-        print("\tColor: "+matched[num][3])
-        print("\tPlate Number: "+matched[num][4])
-        print("\tLatest registration date: "+matched[num][5])
-        print("\tExpiry date: "+matched[num][6])
-        print("\tOwner: "+matched[num][7])
-
-        option = input("Do you want to see all the results again?(y/n) ")
-        if(option == 'y'):
-            show_results(matched)
-        else:
-            return
-            
-        # else:
-        #     print("No results to show.")
-
-    return
-
-
 def issue_ticket():
+    """
+    Description:
+        * This function enables traffic officer to issue a ticket to a registered vehicle.
+        * Violation date and fine amount are inputted by the user, however, violation date is optional
+            and will be set to today's date if not given
+    Arguments:
+        None
+    Returns:
+        None
+    """
 
-    print("****************************************************************")
+    print("*******************ISSUE A TICKET*****************************")
     regno = [input("Enter the registration number: ")]
     cursor.execute("SELECT r.regno FROM registrations r;")
     regNums = [[str(item) for item in results] for results in cursor.fetchall()]
@@ -934,9 +961,91 @@ def issue_ticket():
 
     return
 
+def yes_or_no(keyword, doesKnow):
+    """ 
+        Checks if the value is either yes or no, otherwise it will ask the user the second time
+        and go back to the main menu the third time
+        This function is made for the function find_owner
+    """
+
+    value = ""
+    if (doesKnow.lower() == 'y'):
+        value = input("Please ENTER the car "+keyword+": ")
+    elif (doesKnow.lower() == 'n'):
+        value = "none"
+    else:
+        print("INVALID ENTRY!")
+        option = input("Try again?(y/n) ")
+        if (option.lower() == 'y'):
+            print("\n****************************")
+            doesKnow = input("Do you KNOW the car "+keyword+"?(y/n) ")
+            value = yes_or_no(keyword, doesKnow)
+        elif (option.lower() == 'n'):
+            print("You are being redirected to the MAIN MENU.")
+            if (usertype == 'a'):
+                agent_menu()
+            elif (usertype == 'o'):
+                enforcer_menu()
+        else:
+            print("INVALID ENTRY!")
+            print("You are being redirected to the MAIN MENU.")
+            if (usertype == 'a'):
+                agent_menu()
+            elif (usertype == 'o'):
+                enforcer_menu()
+    return value
+
+
+
+# Show results for find_owner
+def show_results(matched):
+    for i in range(len(matched)):
+        print("<"+str(i+1)+">")
+        print("\tMake: "+matched[i][0])
+        print("\tModel: "+matched[i][1])
+        print("\tYear: "+matched[i][2])
+        print("\tColor: "+matched[i][3])
+        print("\tPlate Number: "+matched[i][4])
+
+        if (len(matched) < 4):
+            print("\tLatest registration date: "+matched[i][5])
+            print("\tExpiry date: "+matched[i][6])
+            print("\tOwner: "+matched[i][7])
+
+    if (len(matched) >= 4):
+        num = int(input("Enter the result number to see more details or press any key to start a new search: "))
+        print("<"+str(num)+">")
+        print("\tMake: "+matched[num][0])
+        print("\tModel: "+matched[num][1])
+        print("\tYear: "+matched[num][2])
+        print("\tColor: "+matched[num][3])
+        print("\tPlate Number: "+matched[num][4])
+        print("\tLatest registration date: "+matched[num][5])
+        print("\tExpiry date: "+matched[num][6])
+        print("\tOwner: "+matched[num][7])
+
+        option = input("Do you want to see all the results again?(y/n) ")
+        if(option == 'y'):
+            show_results(matched)
+        else:
+            return
+            
+        # else:
+        #     print("No results to show.")
+
+    return
 
 
 def find_owner():
+    """
+    Description:
+        * This function enables traffic officer to find a car owner by specifying any combinations of
+            make, model, year, color, and plate number. 
+    Arguments:
+        None
+    Returns:
+        None
+    """
     global connection, cursor
     print("***********CAR OWNER SEARCH************")
     whereClause = "v.vin = r.vin"
@@ -1012,7 +1121,6 @@ def find_owner():
 
     try:
         show_results(matched)
-        #TODO: Go back to all the results
 
         print("****************************")
         
@@ -1032,31 +1140,8 @@ def main():
     dbName = input("Please enter the database name (format: <dbname>.db):")
     path = "./"+dbName
     connect(path)
-    # drop_tables()
-    # define_tables()
-    # insert_data()
-
-    #### your part ####
-    # register all students in all courses.
-    # cursor.execute('''select student_id from student;''')
-    # studentList = [[str(item) for item in results] for results in  cursor.fetchall()]
-    # cursor.execute("""select course_id from course""")
-    # studentList = [[str(item) for item in results] for results in  cursor.fetchall()]
-
+    
     login()
-    # register_marriage()
-    # renew_reg()
-    #process_payment()
-    # find_owner()
-    # bool exists = false;
-    # for student in studentList:
-    #     if ()
-
-	# for course in courseList:
-	#     enroll(student[0], course[0])
-    # connection.commit()
-
-    # return
 
 
 if __name__ == "__main__":
